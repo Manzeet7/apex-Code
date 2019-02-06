@@ -1,0 +1,35 @@
+public class CSVReaderExperiment {
+    /* Complete First Version
+	Major Issues:- Label Should be exactly the same and are Case Sensitive
+	Trim is important:- Last Value contain '\n' at the end.
+	*/
+    public static void readFile(){
+        /* Need to Work for Every Object Use Schema.getGlobalDescribe() */
+        Map<String,Schema.SObjectField> fieldsMap = Account.getSObjectType().getDescribe().fields.getMap();
+        Map<String,String> labelToApiName = new Map<String,String>();
+        Map<String,String> labelToFieldType = new Map<String,String>();
+        for(String fieldName: fieldsMap.keySet()){
+            labelToApiName.put(fieldsMap.get(fieldName).getDescribe().getLabel().toLowerCase(),fieldName);
+        }
+        String csvData;
+        List<ContentDocument> tempFile = [select Id,LatestPublishedVersion.VersionData from ContentDocument where Id = : '0697F00000LWgSA'];
+        if(tempFile.size() > 0){
+            csvData = tempFile.get(0).LatestPublishedVersion.VersionData.toString();
+        }
+        String[] allRows = csvData.split('\n');
+        String[] headerValues = allRows[0].split(',');
+        List<Account> insertTheseAccount = new List<Account>();
+        for(Integer i=1;i<allRows.size();i++){
+            Account temp = new Account();
+            Integer index = 0;
+            String[] currentRow = allRows[i].split(',');
+            for(Integer j=0;j<=currentRow.size();j++){
+                /* TRIM IS IMPORANT*/
+                temp.put(labelToApiName.get(headerValues[index].toLowerCase().trim()),currentRow[j]);
+                index++;
+            }
+            insertTheseAccount.add(temp);
+        }
+        System.debug(insertTheseAccount);
+    }
+}
