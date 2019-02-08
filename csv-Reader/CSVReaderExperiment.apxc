@@ -1,0 +1,50 @@
+public class CSVReaderExperiment {
+    /* Complete First Version
+Major Issues:- Label Should be exactly the same and are Case Sensitive
+Trim is important:- Last Value contain '\n' at the end.
+*/
+    public static void readFile(){
+        /* Need to Work for Every Object Use Schema.getGlobalDescribe() */
+        Map<String,Schema.SObjectField> fieldsMap = Account.getSObjectType().getDescribe().fields.getMap();
+        Map<String,String> labelToApiName = new Map<String,String>();
+        Map<String,Schema.DisplayType> labelToFieldType = new Map<String,Schema.DisplayType>();
+        for(String fieldName: fieldsMap.keySet()){
+            labelToApiName.put(fieldsMap.get(fieldName).getDescribe().getLabel().toLowerCase(),fieldName);
+            labelToFieldType.put(fieldsMap.get(fieldName).getDescribe().getLabel().toLowerCase(),fieldsMap.get(fieldName).getDescribe().getType());
+        }
+        String csvData;
+        List<ContentDocument> tempFile = [select Id,LatestPublishedVersion.VersionData from ContentDocument where Id = : '0697F00000LWgSA'];
+        if(tempFile.size() > 0){
+            csvData = tempFile.get(0).LatestPublishedVersion.VersionData.toString();
+        }
+        String[] allRows = csvData.split('\n');
+        String[] headerValues = allRows[0].split(',');
+        List<Account> insertTheseAccount = new List<Account>();
+        for(Integer i=1;i<allRows.size();i++){
+            Account temp = new Account();
+            Integer index = 0;
+            String[] currentRow = allRows[i].split(',');
+            System.debug(currentRow);
+            System.debug(currentRow.size());
+            for(Integer j=0;j<currentRow.size()-1;j++){
+                /* TRIM IS IMPORANT*/
+                //System.debug(labelToFieldType.get(headerValues[index].toLowerCase().trim()).name());
+                if(labelToFieldType.get(headerValues[index].toLowerCase().trim()).name().equals('CURRENCY')){
+                    Decimal d = Decimal.valueOf(!String.isEmpty(currentRow[j]) ? currentRow[j] : '0');
+                    d = d.setScale(8,RoundingMode.HALF_EVEN);
+                    System.debug('-+-+>'+d);
+                    System.debug(headerValues[index].toLowerCase().trim());
+                    temp.put(labelToApiName.get(headerValues[index].toLowerCase().trim()),d);
+                    System.debug(temp);
+                }else{
+                    temp.put(labelToApiName.get(headerValues[index].toLowerCase().trim()),currentRow[j]);
+                    System.debug(temp);
+                }
+                index++;
+            }
+            insertTheseAccount.add(temp);
+            System.debug(insertTheseAccount);
+        }
+        System.debug(insertTheseAccount);
+    }
+}
