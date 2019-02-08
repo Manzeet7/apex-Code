@@ -1,0 +1,103 @@
+public class UserToQueueExperimentClass {
+    public static Map<Id,Set<Id>> findUserToQueueList(Set<Id> userId,Map<Id,Set<Id>> addUserToQueueList,Map<Id,Set<Id>> addUserToGroupList,Boolean groupOrUser){
+        
+        /* DEBUG */
+        System.debug('-+-+>'+userId);
+        
+        Map<Id,Set<Id>> userToQueueList;
+        Map<Id,Set<Id>> userToGroupList;
+        Set<Id> groupIdList;
+        Set<Id> groupMemberIds;
+        List<GroupMember> groupMemberList;
+        if(addUserToQueueList !=null && addUserToQueueList.keySet().size() != 0)
+            userToQueueList = addUserToQueueList;
+        else
+            userToQueueList = new Map<Id,Set<Id>>();
+        
+        /* DEBUG */
+        System.debug('-+-+>'+userToQueueList);
+        
+        if(addUserToGroupList !=null &&  addUserToGroupList.keySet().size() != 0)
+            userToGroupList = addUserToGroupList;
+        else
+            userToGroupList = new Map<Id,Set<Id>>();
+        
+        /* DEBUG */
+        System.debug('-+-+>'+userToGroupList);
+        
+        
+        if(groupOrUser){
+            groupMemberList = [select Id,GroupId,UserOrGroupId,Group.Type from GroupMember where UserOrGroupId in : userId];
+            groupMemberIds  = new Set<ID>();
+            
+            /* DEBUG */
+            System.debug('-+-+>'+groupMemberList);
+            
+            for(GroupMember temp:groupMemberList){
+                if(temp.Group.Type == 'Queue'){
+                    if(userToQueueList.get(temp.UserOrGroupId) != null){
+                        userToQueueList.get(temp.UserOrGroupId).add(temp.GroupId);
+                    }else{
+                        userToQueueList.put(temp.userorGroupId,new Set<Id>{temp.GroupId});
+                    }
+                }else if(temp.Group.Type == 'Regular'){
+                    groupMemberIds.add(temp.GroupId);//WILL BE PASSED TO THE RECURSION AS GROUP ID PARAMETER
+                    if(userToGroupList.get(temp.UserOrGroupId) != null){
+                        userToGroupList.get(temp.UserOrGroupId).add(temp.GroupId);
+                    }else{
+                        userToGroupList.put(temp.userorGroupId,new Set<Id>{temp.GroupId});
+                    }
+                }
+                
+            }
+            /* DEBUG */
+            System.debug('-+-+>'+userToQueueList);
+            /* DEBUG */
+            System.debug('-+-+>'+userToGroupList);
+            
+        }else{
+            groupIdList = userId;
+            groupMemberList = [select Id,GroupId,UserOrGroupId,Group.Type from GroupMember where UserOrGroupId in : groupIdList];
+            groupMemberIds  = new Set<ID>();
+            /* DEBUG */
+            System.debug('-+-+>'+groupMemberList);
+            if(groupMemberList.size() > 0){
+                for(GroupMember temp:groupMemberList){
+                    if(temp.Group.Type == 'Queue'){
+                        for(Id tempUserId:userToGroupList.keySet()){
+                            
+                            if(userToQueueList.get(tempUserId) != null){
+                                if(userToGroupList.get(tempUserId).contains(temp.UserOrGroupId))
+                                	userToQueueList.get(tempUserId).add(temp.GroupId);
+                            }else{
+                                userToQueueList.put(tempUserId,new Set<Id>{temp.GroupId});
+                            }
+                        }
+                    }else if(temp.Group.Type == 'Regular'){
+                        groupMemberIds.add(temp.GroupId);//WILL BE PASSED TO THE RECURSION AS GROUP ID PARAMETER
+                        for(Id tempUserId: userToGroupList.keySet()){
+                            userToGroupList.get(tempUserId).remove(temp.UserOrGroupId);
+                            userToGroupList.get(tempUserId).add(temp.GroupId);
+                        }
+                    }
+                }
+                /* DEBUG */
+                System.debug('-+-+>'+userToQueueList);
+                /* DEBUG */
+                System.debug('-+-+>'+userToGroupList);
+            }
+        }
+        
+        /* DEBUG */
+        System.debug('-+-+>'+groupMemberIds.size());
+        if(groupMemberIds.size() > 0){
+            userToQueueList = findUserToQueueList(groupMemberIds, userToQueueList,userToGroupList,false);
+        }else{
+            /* DEBUG */
+            System.debug('-+-+>'+ userToQueueList);
+            return userToQueueList;
+        }
+        return userToQueueList;
+    }
+    
+}
